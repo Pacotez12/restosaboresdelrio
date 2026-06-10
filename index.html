@@ -3,174 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sabores del Río</title>
+  <title>Sabores del Río | Login</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="login-mode">
 
-<!-- TOPBAR -->
-<div class="topbar">
-  <div class="logo">
-    <span class="logo-wave">🌊</span>
-    Sabores <em>del Río</em>
-  </div>
-  <div class="nav-tabs">
-    <button class="nav-tab active" onclick="switchView('pedidos', this)">🪸 Pedidos</button>
-    <button class="nav-tab" onclick="switchView('cocina', this)">🐟 Cocina</button>
-    <button class="nav-tab" onclick="switchView('reportes', this)">📊 Reportes</button>
-  </div>
-  <div class="topbar-right">
-    <span class="clock" id="clock">--:--</span>
-    <span class="badge" id="notif-badge">0 pendientes</span>
-  </div>
-</div>
-
-<!-- ===== PEDIDOS ===== -->
-<div id="view-pedidos" class="view active">
-  <div class="pedidos-layout">
-
-    <div class="panel-mesas">
-      <div class="panel-header">
-        <span class="panel-title">Mesas</span>
-        <span style="font-size:11px;color:var(--muted)" id="mesa-selected-label">Sin selección</span>
-      </div>
-      <div class="mesas-grid" id="mesas-grid"></div>
-    </div>
-
-    <div class="panel-menu">
-      <div class="menu-search-bar">
-        <input class="search-input" type="text" placeholder="🔍  Buscar en el menú..." id="search-input" oninput="filterMenu()">
-      </div>
-      <div class="cat-pills" id="cat-pills"></div>
-      <div class="menu-items" id="menu-items-grid"></div>
-    </div>
-
-    <div class="panel-orden">
-      <div class="panel-header">
-        <span class="panel-title">Orden — <span id="orden-mesa-label">sin mesa</span></span>
-        <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;" onclick="clearOrden()">✕</button>
-      </div>
-      <div class="orden-items" id="orden-items">
-        <div class="empty-state">
-          <div class="empty-state-icon">🦐</div>
-          <div class="empty-state-text">Seleccioná una mesa<br>y elegí del menú</div>
+<!-- ===== LOGIN ===== -->
+<div id="view-login" class="view active">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-logo">🌊</div>
+      <h1 class="login-title">Sabores del Río</h1>
+      <p class="login-subtitle">Inicia sesión para continuar</p>
+      
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="username">Usuario</label>
+          <input type="text" id="username" class="search-input" placeholder="Tu usuario" required>
         </div>
-      </div>
-      <div class="orden-footer">
-        <div class="total-row"><span class="total-label">Subtotal</span><span class="total-val" id="subtotal">Gs. 0</span></div>
-        <div class="total-row"><span class="total-label">IVA (10%)</span><span class="total-val" id="iva">Gs. 0</span></div>
-        <div class="total-row" style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
-          <span style="font-weight:700;font-size:14px;letter-spacing:0.5px;">TOTAL</span>
-          <span class="total-main" id="total">Gs. 0</span>
+        <div class="form-group" style="margin-top: 15px;">
+          <label for="password">Contraseña</label>
+          <input type="password" id="password" class="search-input" placeholder="••••••••" required>
         </div>
-        <textarea class="notas-input" id="notas-orden" placeholder="📝 Notas para cocina..."></textarea>
-        <button class="btn btn-primary" onclick="enviarCocina()">🚀 Enviar a Cocina</button>
-        <button class="btn btn-success" onclick="cobrarOrden()" style="margin-top:6px;">💳 Cobrar</button>
-        <button class="btn btn-danger" onclick="clearOrden()" style="margin-top:6px;">🗑️ Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== COCINA ===== -->
-<div id="view-cocina" class="view">
-  <div class="cocina-layout">
-    <div class="cocina-header">
-      <div>
-        <div class="cocina-title">🐟 Pantalla de Cocina</div>
-        <div class="cocina-subtitle">Sabores del Río — Tickets en tiempo real</div>
-      </div>
-      <div class="cocina-stats">
-        <div class="stat-pill pendiente" id="stat-pendiente">0 Pendientes</div>
-        <div class="stat-pill proceso" id="stat-proceso">0 En proceso</div>
-        <div class="stat-pill listo" id="stat-listo">0 Listos</div>
-      </div>
-    </div>
-    <div class="cocina-columns">
-      <div class="col-pendiente">
-        <div class="cocina-col-header">
-          <span>🔴</span><span class="col-title">Pendiente</span>
-        </div>
-        <div id="col-pendiente-items"></div>
-      </div>
-      <div class="col-proceso">
-        <div class="cocina-col-header">
-          <span>🟡</span><span class="col-title">En preparación</span>
-        </div>
-        <div id="col-proceso-items"></div>
-      </div>
-      <div class="col-listo">
-        <div class="cocina-col-header">
-          <span>🟢</span><span class="col-title">Listo para entregar</span>
-        </div>
-        <div id="col-listo-items"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== REPORTES ===== -->
-<div id="view-reportes" class="view">
-  <div class="reportes-layout">
-    <div class="reportes-header">
-      <div>
-        <div class="rep-title">Reportes</div>
-        <div style="color:var(--muted);font-size:12px;margin-top:3px;">Análisis de ventas y rendimiento</div>
-      </div>
-      <div class="rep-filters">
-        <select class="rep-select" id="rep-periodo" onchange="renderReportes()">
-          <option value="hoy">Hoy</option>
-          <option value="semana">Esta semana</option>
-          <option value="mes">Este mes</option>
-        </select>
-        <button class="btn btn-secondary" style="width:auto;padding:9px 18px;margin-top:0;display:inline-block;" onclick="exportarCSV()">⬇ Exportar CSV</button>
-      </div>
-    </div>
-
-    <div class="kpi-grid" id="kpi-grid"></div>
-
-    <div class="charts-grid">
-      <div class="chart-card">
-        <div class="chart-title">Ventas por hora del día</div>
-        <div class="bar-chart" id="chart-ventas-hora"></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title">Distribución por categoría</div>
-        <div class="donut-wrap" id="chart-categorias"></div>
-      </div>
-    </div>
-
-    <div class="table-card">
-      <div class="table-header">
-        <span class="panel-title">🏆 Top Productos</span>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Producto</th>
-            <th>Categoría</th>
-            <th>Vendidos</th>
-            <th>Ingresos</th>
-            <th>Participación</th>
-          </tr>
-        </thead>
-        <tbody id="tabla-productos-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- Modal -->
-<div class="modal-overlay" id="modal-overlay">
-  <div class="modal">
-    <div class="modal-title" id="modal-title">Confirmar</div>
-    <div class="modal-sub" id="modal-sub">¿Estás seguro?</div>
-    <div id="modal-body"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal()" style="margin-top:0;">Cancelar</button>
-      <button class="btn btn-primary" id="modal-confirm-btn" style="margin-top:0;">Confirmar</button>
+        <div id="login-error" class="login-error" style="display: none;">Credenciales incorrectas</div>
+        <button type="submit" class="btn btn-primary" style="margin-top: 25px; width: 100%;">Entrar</button>
+      </form>
     </div>
   </div>
 </div>

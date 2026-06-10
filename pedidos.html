@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pedidos | Sabores del Río</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <span class="logo-wave">🌊</span>
+    Sabores <em>del Río</em>
+  </div>
+  <div class="topbar-right">
+    <span id="user-info" style="font-size: 13px; color: var(--muted); margin-right: 15px; font-weight: 500;"></span>
+    <span class="clock" id="clock">--:--</span>
+    <span class="badge" id="notif-badge">0 pendientes</span>
+    <button class="btn btn-secondary" onclick="logout()" style="width: auto; padding: 5px 12px; margin-left: 15px; font-size: 12px; border-color: transparent;">Salir</button>
+  </div>
+</div>
+
+<!-- ===== PEDIDOS ===== -->
+<div id="view-pedidos" class="view active">
+  <div class="pedidos-layout">
+    <div class="panel-mesas">
+      <div class="panel-header">
+        <span class="panel-title">Mesas</span>
+        <span style="font-size:11px;color:var(--muted)" id="mesa-selected-label">Sin selección</span>
+      </div>
+      <div class="mesas-grid" id="mesas-grid"></div>
+    </div>
+
+    <div class="panel-menu">
+      <div class="menu-search-bar">
+        <input class="search-input" type="text" placeholder="🔍  Buscar en el menú..." id="search-input" oninput="filterMenu()">
+      </div>
+      <div class="cat-pills" id="cat-pills"></div>
+      <div class="menu-items" id="menu-items-grid"></div>
+    </div>
+
+    <div class="panel-orden">
+      <div class="panel-header">
+        <span class="panel-title">Orden — <span id="orden-mesa-label">sin mesa</span></span>
+        <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;" onclick="clearOrden()">✕</button>
+      </div>
+      <div class="orden-items" id="orden-items">
+        <div class="empty-state">
+          <div class="empty-state-icon">🦐</div>
+          <div class="empty-state-text">Seleccioná una mesa<br>y elegí del menú</div>
+        </div>
+      </div>
+      <div class="orden-footer">
+        <div class="total-row"><span class="total-label">Subtotal</span><span class="total-val" id="subtotal">Gs. 0</span></div>
+        <div class="total-row"><span class="total-label">IVA (10%)</span><span class="total-val" id="iva">Gs. 0</span></div>
+        <div class="total-row" style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
+          <span style="font-weight:700;font-size:14px;letter-spacing:0.5px;">TOTAL</span>
+          <span class="total-main" id="total">Gs. 0</span>
+        </div>
+        <textarea class="notas-input" id="notas-orden" placeholder="📝 Notas para cocina..."></textarea>
+        <button class="btn btn-primary" onclick="enviarCocina()">🚀 Enviar a Cocina</button>
+        <button class="btn btn-success" onclick="cobrarOrden()" style="margin-top:6px;">💳 Cobrar</button>
+        <button class="btn btn-danger" onclick="clearOrden()" style="margin-top:6px;">🗑️ Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Confirmar</div>
+    <div class="modal-sub" id="modal-sub">¿Estás seguro?</div>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()" style="margin-top:0;">Cancelar</button>
+      <button class="btn btn-primary" id="modal-confirm-btn" style="margin-top:0;">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

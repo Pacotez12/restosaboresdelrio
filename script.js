@@ -16,14 +16,73 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 
-// ============ VISTAS ============
-function switchView(v, el) {
-  document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(x => x.classList.remove('active'));
-  document.getElementById('view-' + v).classList.add('active');
-  el.classList.add('active');
-  if (v === 'cocina') renderCocina();
-  if (v === 'reportes') renderReportes();
+// ============ AUTH & RUTAS ============
+const USERS = {
+  'admin':   { pass: '123', rol: 'admin',   home: 'reportes.html', nombre: 'Administrador' },
+  'cocina':  { pass: '123', rol: 'cocina',  home: 'cocina.html',   nombre: 'Jefe de Cocina' },
+  'mozo':    { pass: '123', rol: 'mozo',    home: 'pedidos.html',  nombre: 'Mozo de Salón' }
+};
+
+function handleLogin(e) {
+  e.preventDefault();
+  const u = document.getElementById('username').value;
+  const p = document.getElementById('password').value;
+  const err = document.getElementById('login-error');
+
+  if (USERS[u] && USERS[u].pass === p) {
+    localStorage.setItem('sabores_session', JSON.stringify({ user: u, ...USERS[u] }));
+    err.style.display = 'none';
+    window.location.href = USERS[u].home;
+  } else {
+    err.style.display = 'block';
+  }
+}
+
+function logout() {
+  localStorage.removeItem('sabores_session');
+  window.location.href = 'index.html';
+}
+
+function checkPageAuth() {
+  const session = JSON.parse(localStorage.getItem('sabores_session'));
+  const path = window.location.pathname;
+  const page = path.split('/').pop() || 'index.html';
+
+  // Si no hay sesión y no estamos en login, ir a login
+  if (!session && page !== 'index.html') {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  // Si hay sesión
+  if (session) {
+    // Si está en login teniendo sesión, mandarlo a su home
+    if (page === 'index.html') {
+      window.location.href = session.home;
+      return;
+    }
+
+    // Protección de rutas por archivo físico
+    if (session.rol === 'mozo' && page !== 'pedidos.html') { window.location.href = 'pedidos.html'; return; }
+    if (session.rol === 'cocina' && page !== 'cocina.html') { window.location.href = 'cocina.html'; return; }
+    if (session.rol === 'admin' && page !== 'reportes.html') { window.location.href = 'reportes.html'; return; }
+
+    // Actualizar UI de sesión
+    const userInfoEl = document.getElementById('user-info');
+    if (userInfoEl) userInfoEl.textContent = `${session.nombre} (${session.rol})`;
+  }
+}
+
+// Reemplazamos el router SPA por el validador de página
+function initPage() {
+  checkPageAuth();
+  
+  const path = window.location.pathname;
+  const page = path.split('/').pop() || 'index.html';
+
+  if (page === 'pedidos.html') { renderMesas(); renderMenuItems(); renderCatPills(); }
+  if (page === 'cocina.html') renderCocina();
+  if (page === 'reportes.html') renderReportes();
 }
 
 // ============ MESAS ============
@@ -415,9 +474,6 @@ function exportarCSV() {
 // ============ INIT ============
 document.addEventListener('DOMContentLoaded', () => {
   updateClock();
-  renderMesas();
-  renderCatPills();
-  renderMenuItems();
 
   tickets = [
     { id:101, mesa:2, items:[{id:5,nombre:'Surubí a la Plancha',emoji:'🐠',precio:78000,qty:2},{id:21,nombre:'Vino Blanco Copa',emoji:'🥂',precio:32000,qty:2}], notas:'Sin picante', estado:'pendiente', hora:new Date(Date.now()-7*60000) },
@@ -425,4 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { id:103, mesa:6, items:[{id:7,nombre:'Dorado al Limón',emoji:'🍊',precio:90000,qty:1},{id:11,nombre:'Pulpo a la Gallega',emoji:'🐙',precio:95000,qty:1}], notas:'', estado:'listo', hora:new Date(Date.now()-21*60000) },
   ];
   updateNotifBadge();
+
+  // Iniciar validación de página
+  initPage();
 });

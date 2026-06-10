@@ -1,0 +1,13 @@
+{
+  "name": "restosaboresdelrio",
+  "version": "1.0.0",
+  "description": "Sistema de gestión para Sabores del Río",
+  "main": "index.html",
+  "scripts": {
+    "start": "browser-sync start --server --files \"*.html, *.css, *.js\"",
+    "dev": "browser-sync start --server --files \"*.html, *.css, *.js\""
+  },
+  "devDependencies": {
+    "browser-sync": "^3.0.3"
+  }
+}

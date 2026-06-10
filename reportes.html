@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes | Sabores del Río</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <span class="logo-wave">🌊</span>
+    Sabores <em>del Río</em>
+  </div>
+  <div class="topbar-right">
+    <span id="user-info" style="font-size: 13px; color: var(--muted); margin-right: 15px; font-weight: 500;"></span>
+    <span class="clock" id="clock">--:--</span>
+    <span class="badge" id="notif-badge">0 pendientes</span>
+    <button class="btn btn-secondary" onclick="logout()" style="width: auto; padding: 5px 12px; margin-left: 15px; font-size: 12px; border-color: transparent;">Salir</button>
+  </div>
+</div>
+
+<!-- ===== REPORTES ===== -->
+<div id="view-reportes" class="view active">
+  <div class="reportes-layout">
+    <div class="reportes-header">
+      <div>
+        <div class="rep-title">Reportes</div>
+        <div style="color:var(--muted);font-size:12px;margin-top:3px;">Análisis de ventas y rendimiento</div>
+      </div>
+      <div class="rep-filters">
+        <select class="rep-select" id="rep-periodo" onchange="renderReportes()">
+          <option value="hoy">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes">Este mes</option>
+        </select>
+        <button class="btn btn-secondary" style="width:auto;padding:9px 18px;margin-top:0;display:inline-block;" onclick="exportarCSV()">⬇ Exportar CSV</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Ventas por hora del día</div>
+        <div class="bar-chart" id="chart-ventas-hora"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Distribución por categoría</div>
+        <div class="donut-wrap" id="chart-categorias"></div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-header">
+        <span class="panel-title">🏆 Top Productos</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th>Vendidos</th>
+            <th>Ingresos</th>
+            <th>Participación</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-productos-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

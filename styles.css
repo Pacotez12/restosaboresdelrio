@@ -65,59 +65,9 @@ body::before {
   box-shadow: 0 4px 30px rgba(0,0,0,0.4);
 }
 
-.logo {
-  font-family: 'Playfair Display', serif;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: 0.5px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+body.login-mode .topbar {
+  display: none;
 }
-
-.logo-wave { font-size: 22px; animation: float 3s ease-in-out infinite; }
-@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-
-.logo em {
-  font-style: italic;
-  font-weight: 400;
-  color: var(--text);
-  font-size: 18px;
-}
-
-.nav-tabs {
-  display: flex;
-  gap: 2px;
-  background: rgba(5,15,20,0.6);
-  padding: 4px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-}
-
-.nav-tab {
-  padding: 7px 22px;
-  border-radius: 7px;
-  cursor: pointer;
-  font-family: 'Outfit', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--muted);
-  transition: all 0.25s;
-  border: none;
-  background: none;
-}
-
-.nav-tab.active {
-  background: var(--surface2);
-  color: var(--accent);
-  border: 1px solid var(--border);
-  box-shadow: 0 2px 12px rgba(56,201,192,0.12);
-}
-
-.nav-tab:hover:not(.active) { color: var(--text); }
 
 .topbar-right { display: flex; align-items: center; gap: 16px; }
 
@@ -133,10 +83,88 @@ body::before {
   font-weight: 600;
 }
 
+/* ========= LOGIN SCREEN ========= */
+#view-login {
+  background: var(--bg);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 400px;
+  z-index: 1;
+}
+
+.login-card {
+  background: var(--surface);
+  padding: 45px;
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  text-align: center;
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+
+.login-logo {
+  font-size: 56px;
+  margin-bottom: 15px;
+  filter: drop-shadow(0 0 15px var(--accent));
+}
+
+.login-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 35px;
+}
+
+.form-group {
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 10px;
+  margin-left: 4px;
+}
+
+.login-error {
+  color: #ff9999;
+  font-size: 13px;
+  margin-top: 15px;
+  background: rgba(224, 92, 42, 0.1);
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(224, 92, 42, 0.3);
+}
+
 /* ========= VIEWS ========= */
-.view { display: none; animation: fadeIn 0.35s ease; position: relative; z-index: 1; }
-.view.active { display: block; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.view { 
+  display: block; 
+  animation: fadeIn 0.35s ease; 
+  position: relative; 
+  z-index: 1; 
+  width: 100%;
+}
+
+@keyframes fadeIn { 
+  from { opacity: 0; transform: translateY(8px); } 
+  to { opacity: 1; transform: translateY(0); } 
+}
 
 /* ========= PEDIDOS ========= */
 .pedidos-layout {

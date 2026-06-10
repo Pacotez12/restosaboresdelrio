@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cocina | Sabores del Río</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <span class="logo-wave">🌊</span>
+    Sabores <em>del Río</em>
+  </div>
+  <div class="topbar-right">
+    <span id="user-info" style="font-size: 13px; color: var(--muted); margin-right: 15px; font-weight: 500;"></span>
+    <span class="clock" id="clock">--:--</span>
+    <span class="badge" id="notif-badge">0 pendientes</span>
+    <button class="btn btn-secondary" onclick="logout()" style="width: auto; padding: 5px 12px; margin-left: 15px; font-size: 12px; border-color: transparent;">Salir</button>
+  </div>
+</div>
+
+<!-- ===== COCINA ===== -->
+<div id="view-cocina" class="view active">
+  <div class="cocina-layout">
+    <div class="cocina-header">
+      <div>
+        <div class="cocina-title">🐟 Pantalla de Cocina</div>
+        <div class="cocina-subtitle">Sabores del Río — Tickets en tiempo real</div>
+      </div>
+      <div class="cocina-stats">
+        <div class="stat-pill pendiente" id="stat-pendiente">0 Pendientes</div>
+        <div class="stat-pill proceso" id="stat-proceso">0 En proceso</div>
+        <div class="stat-pill listo" id="stat-listo">0 Listos</div>
+      </div>
+    </div>
+    <div class="cocina-columns">
+      <div class="col-pendiente">
+        <div class="cocina-col-header">
+          <span>🔴</span><span class="col-title">Pendiente</span>
+        </div>
+        <div id="col-pendiente-items"></div>
+      </div>
+      <div class="col-proceso">
+        <div class="cocina-col-header">
+          <span>🟡</span><span class="col-title">En preparación</span>
+        </div>
+        <div id="col-proceso-items"></div>
+      </div>
+      <div class="col-listo">
+        <div class="cocina-col-header">
+          <span>🟢</span><span class="col-title">Listo para entregar</span>
+        </div>
+        <div id="col-listo-items"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
