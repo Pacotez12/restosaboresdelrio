@@ -16,6 +16,21 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
 });
 
+// Asegurar columna 'activo' y restricción ON DELETE CASCADE en pedido_items
+pool.query(`
+  ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE;
+  ALTER TABLE pedido_items 
+  DROP CONSTRAINT IF EXISTS pedido_items_menu_item_id_fkey,
+  ADD CONSTRAINT pedido_items_menu_item_id_fkey 
+    FOREIGN KEY (menu_item_id) 
+    REFERENCES menu_items(id) 
+    ON DELETE CASCADE;
+`).then(() => {
+  console.log("Base de datos verificada (columna 'activo' y restricciones actualizadas).");
+}).catch(err => {
+  console.error("Error al actualizar la base de datos:", err);
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '.')));
@@ -43,12 +58,19 @@ app.post('/api/login', async (req, res) => {
 
 // Obtener Menú
 app.get('/api/menu', async (req, res) => {
+  const { todos } = req.query;
   try {
-    const result = await pool.query(`
-      SELECT m.id, m.nombre, m.precio, m.emoji, c.nombre as cat 
+    let query = `
+      SELECT m.id, m.nombre, m.precio, m.emoji, m.categoria_id, m.activo, c.nombre as cat 
       FROM menu_items m 
       JOIN categorias c ON m.categoria_id = c.id
-    `);
+    `;
+    if (todos === 'true') {
+      // Devolver todos para administración
+    } else {
+      query += ' WHERE m.activo = true';
+    }
+    const result = await pool.query(query);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -221,6 +243,137 @@ app.get('/api/reportes', async (req, res) => {
       ventasCat: ventasCat.rows,
       topProductos: topProductos.rows
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ USER CRUD ENDPOINTS ============
+
+// Obtener todos los usuarios
+app.get('/api/usuarios', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, username, password, rol, nombre, home_page FROM usuarios ORDER BY id');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Crear usuario
+app.post('/api/usuarios', async (req, res) => {
+  const { username, password, rol, nombre } = req.body;
+  let home_page = 'pedidos.html';
+  if (rol === 'admin') home_page = 'reportes.html';
+  else if (rol === 'cocina') home_page = 'cocina.html';
+
+  try {
+    const result = await pool.query(
+      'INSERT INTO usuarios (username, password, rol, nombre, home_page) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [username, password, rol, nombre, home_page]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Editar usuario
+app.put('/api/usuarios/:id', async (req, res) => {
+  const { id } = req.params;
+  const { username, password, rol, nombre } = req.body;
+  let home_page = 'pedidos.html';
+  if (rol === 'admin') home_page = 'reportes.html';
+  else if (rol === 'cocina') home_page = 'cocina.html';
+
+  try {
+    let result;
+    if (password) {
+      result = await pool.query(
+        'UPDATE usuarios SET username = $1, password = $2, rol = $3, nombre = $4, home_page = $5 WHERE id = $6 RETURNING *',
+        [username, password, rol, nombre, home_page, id]
+      );
+    } else {
+      result = await pool.query(
+        'UPDATE usuarios SET username = $1, rol = $2, nombre = $3, home_page = $4 WHERE id = $5 RETURNING *',
+        [username, rol, nombre, home_page, id]
+      );
+    }
+    
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Eliminar usuario
+app.delete('/api/usuarios/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM usuarios WHERE id = $1', [id]);
+    res.json({ success: true, message: 'Usuario eliminado con éxito' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ DISH (MENU ITEM) CRUD ENDPOINTS ============
+
+// Obtener todas las categorías
+app.get('/api/categorias', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM categorias ORDER BY id');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Crear plato del menú
+app.post('/api/menu', async (req, res) => {
+  const { nombre, precio, categoria_id, emoji, activo } = req.body;
+  const isActivo = activo !== undefined ? activo : true;
+  try {
+    const result = await pool.query(
+      'INSERT INTO menu_items (nombre, precio, categoria_id, emoji, activo) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [nombre, precio, categoria_id, emoji, isActivo]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Editar plato del menú
+app.put('/api/menu/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nombre, precio, categoria_id, emoji, activo } = req.body;
+  const isActivo = activo !== undefined ? activo : true;
+  try {
+    const result = await pool.query(
+      'UPDATE menu_items SET nombre = $1, precio = $2, categoria_id = $3, emoji = $4, activo = $5 WHERE id = $6 RETURNING *',
+      [nombre, precio, categoria_id, emoji, isActivo, id]
+    );
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Plato no encontrado' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Eliminar plato del menú (Soft Delete)
+app.delete('/api/menu/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('UPDATE menu_items SET activo = false WHERE id = $1', [id]);
+    res.json({ success: true, message: 'Plato desactivado con éxito' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

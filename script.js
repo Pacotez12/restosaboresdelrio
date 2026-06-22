@@ -133,7 +133,9 @@ function renderAdminNav(currentPage) {
   const pages = [
     { name: '📋 Pedidos', url: 'pedidos.html' },
     { name: '🍳 Cocina', url: 'cocina.html' },
-    { name: '📊 Reportes', url: 'reportes.html' }
+    { name: '📊 Reportes', url: 'reportes.html' },
+    { name: '👥 Usuarios', url: 'usuarios.html' },
+    { name: '🍽️ Platos', url: 'platos.html' }
   ];
 
   pages.forEach(p => {
@@ -162,6 +164,13 @@ function initPage() {
   const page = path.split('/').pop() || 'index.html';
 
   if (page === 'pedidos.html') {
+    const session = JSON.parse(localStorage.getItem('sabores_session'));
+    if (session && session.rol === 'admin') {
+      const btnEnviar = document.querySelector('button[onclick="enviarCocina()"]');
+      const btnCobrar = document.querySelector('button[onclick="cobrarOrden()"]');
+      if (btnEnviar) btnEnviar.style.display = 'none';
+      if (btnCobrar) btnCobrar.style.display = 'none';
+    }
     fetchMenu();
     fetchMesas();
     fetchTickets();
@@ -175,6 +184,11 @@ function initPage() {
     setInterval(fetchTickets, 10000);
   }
   if (page === 'reportes.html') renderReportes();
+  if (page === 'usuarios.html') fetchUsuarios();
+  if (page === 'platos.html') {
+    fetchMenuAdmin();
+    cargarCategoriasSelect();
+  }
 }
 
 // ============ MESAS ============
@@ -670,6 +684,16 @@ if (modalOverlay) {
     if (e.target === this) closeModal();
   });
 }
+const formModalOverlay = document.getElementById('form-modal-overlay');
+if (formModalOverlay) {
+  formModalOverlay.addEventListener('click', function(e) {
+    if (e.target === this) {
+      const page = window.location.pathname.split('/').pop() || 'index.html';
+      if (page === 'usuarios.html') cerrarUsuarioModal();
+      if (page === 'platos.html') cerrarPlatoModal();
+    }
+  });
+}
 
 // ============ EXPORT ============
 function exportarCSV() {
@@ -684,6 +708,340 @@ function exportarCSV() {
   const a = document.createElement('a');
   a.href = url; a.download = 'sabores-del-rio-reporte.csv'; a.click();
   URL.revokeObjectURL(url);
+}
+
+// ============ USER CRUD (ADMIN) ============
+let usuarios = [];
+
+async function fetchUsuarios() {
+  try {
+    const res = await fetch(`${API_URL}/api/usuarios`);
+    usuarios = await res.json();
+    renderUsuarios();
+  } catch (err) { console.error('Error fetching users:', err); }
+}
+
+function renderUsuarios(list = usuarios) {
+  const tbody = document.getElementById('tabla-usuarios-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  list.forEach(u => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${u.id}</td>
+      <td><strong>${u.nombre}</strong></td>
+      <td>${u.username}</td>
+      <td><span style="background:rgba(56,201,192,0.08);color:var(--accent);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">${u.rol}</span></td>
+      <td><code style="color:var(--muted);font-size:11px;">${u.home_page}</code></td>
+      <td style="text-align: right;">
+        <button class="btn btn-secondary" style="width:auto;display:inline-block;padding:5px 10px;font-size:11px;margin:0 4px;" onclick="abrirEditarUsuario(${u.id})">✏️ Editar</button>
+        <button class="btn btn-danger" style="width:auto;display:inline-block;padding:5px 10px;font-size:11px;margin:0;" onclick="eliminarUsuario(${u.id})">🗑️ Eliminar</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function filterUsuarios() {
+  const query = document.getElementById('user-search-input').value.toLowerCase();
+  const filtered = usuarios.filter(u => 
+    u.nombre.toLowerCase().includes(query) || 
+    u.username.toLowerCase().includes(query) || 
+    u.rol.toLowerCase().includes(query)
+  );
+  renderUsuarios(filtered);
+}
+
+function abrirCrearUsuario() {
+  const mTitle = document.getElementById('usuario-modal-title');
+  const mId = document.getElementById('edit-user-id');
+  const mNombre = document.getElementById('user-nombre');
+  const mUser = document.getElementById('user-username');
+  const mPass = document.getElementById('user-password');
+  const mRol = document.getElementById('user-rol');
+
+  if (mTitle) mTitle.textContent = 'Crear Usuario';
+  if (mId) mId.value = '';
+  if (mNombre) mNombre.value = '';
+  if (mUser) mUser.value = '';
+  if (mPass) {
+    mPass.value = '';
+    mPass.required = true;
+  }
+  if (mRol) mRol.value = 'mozo';
+  
+  const mOverlay = document.getElementById('form-modal-overlay');
+  if (mOverlay) mOverlay.classList.add('open');
+}
+
+function abrirEditarUsuario(id) {
+  const u = usuarios.find(x => x.id === id);
+  if (!u) return;
+  
+  const mTitle = document.getElementById('usuario-modal-title');
+  const mId = document.getElementById('edit-user-id');
+  const mNombre = document.getElementById('user-nombre');
+  const mUser = document.getElementById('user-username');
+  const mPass = document.getElementById('user-password');
+  const mRol = document.getElementById('user-rol');
+
+  if (mTitle) mTitle.textContent = 'Editar Usuario';
+  if (mId) mId.value = u.id;
+  if (mNombre) mNombre.value = u.nombre;
+  if (mUser) mUser.value = u.username;
+  if (mPass) {
+    mPass.value = ''; // en blanco por seguridad, opcional al editar
+    mPass.required = false;
+  }
+  if (mRol) mRol.value = u.rol;
+
+  const mOverlay = document.getElementById('form-modal-overlay');
+  if (mOverlay) mOverlay.classList.add('open');
+}
+
+function cerrarUsuarioModal() {
+  const mOverlay = document.getElementById('form-modal-overlay');
+  if (mOverlay) mOverlay.classList.remove('open');
+}
+
+async function guardarUsuario(e) {
+  e.preventDefault();
+  const id = document.getElementById('edit-user-id').value;
+  const nombre = document.getElementById('user-nombre').value;
+  const username = document.getElementById('user-username').value;
+  const password = document.getElementById('user-password').value;
+  const rol = document.getElementById('user-rol').value;
+
+  const url = id ? `${API_URL}/api/usuarios/${id}` : `${API_URL}/api/usuarios`;
+  const method = id ? 'PUT' : 'POST';
+  const body = { nombre, username, rol };
+  if (password) body.password = password;
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      cerrarUsuarioModal();
+      fetchUsuarios();
+    } else {
+      const errData = await res.json();
+      alert('Error: ' + (errData.error || 'No se pudo guardar el usuario'));
+    }
+  } catch (err) { console.error('Error saving user:', err); }
+}
+
+async function eliminarUsuario(id) {
+  const u = usuarios.find(x => x.id === id);
+  const nombreUsuario = u ? u.nombre : 'este usuario';
+
+  showModal(
+    '🗑️ Eliminar Usuario', 
+    `¿Estás seguro de que deseas eliminar permanentemente a ${nombreUsuario}?`, 
+    async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/usuarios/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          fetchUsuarios();
+        } else {
+          alert('Error al eliminar usuario');
+        }
+      } catch (err) { console.error('Error deleting user:', err); }
+    }, 
+    'Eliminar'
+  );
+}
+
+// ============ PLATO CRUD (ADMIN) ============
+let adminCategorias = [];
+
+async function cargarCategoriasSelect() {
+  try {
+    const res = await fetch(`${API_URL}/api/categorias`);
+    adminCategorias = await res.json();
+    const select = document.getElementById('plato-categoria');
+    if (select) {
+      select.innerHTML = adminCategorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    }
+  } catch (err) { console.error('Error loading categories:', err); }
+}
+
+async function fetchMenuAdmin() {
+  try {
+    const res = await fetch(`${API_URL}/api/menu?todos=true`);
+    menuItems = await res.json();
+    renderMenuAdmin(menuItems);
+  } catch (err) { console.error('Error fetching menu admin:', err); }
+}
+
+function renderMenuAdmin(items = menuItems) {
+  const tbody = document.getElementById('tabla-platos-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  items.forEach(p => {
+    const badgeEstado = p.activo 
+      ? '<span style="background:rgba(46,196,122,0.08);color:var(--success);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Activo</span>'
+      : '<span style="background:rgba(255,255,255,0.05);color:var(--muted);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Inactivo</span>';
+
+    const actionBtn = p.activo 
+      ? `<button class="btn btn-danger" style="width:auto;display:inline-block;padding:5px 10px;font-size:11px;margin:0;" onclick="eliminarPlato(${p.id})">🗑️ Desactivar</button>`
+      : `<button class="btn btn-success" style="width:auto;display:inline-block;padding:5px 10px;font-size:11px;margin:0;" onclick="reactivarPlato(${p.id})">⚡ Activar</button>`;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-size: 20px;">${p.emoji}</td>
+      <td><strong>${p.nombre}</strong></td>
+      <td>Gs. ${p.precio.toLocaleString('es-PY')}</td>
+      <td><span style="background:rgba(56,201,192,0.08);color:var(--accent);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">${p.cat}</span></td>
+      <td>${badgeEstado}</td>
+      <td style="text-align: right;">
+        <button class="btn btn-secondary" style="width:auto;display:inline-block;padding:5px 10px;font-size:11px;margin:0 4px;" onclick="abrirEditarPlato(${p.id}, '${p.emoji}', '${p.nombre.replace(/'/g, "\\'")}', ${p.precio}, ${p.categoria_id}, ${p.activo})">✏️ Editar</button>
+        ${actionBtn}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function filterPlatos() {
+  const query = document.getElementById('plato-search-input').value.toLowerCase();
+  const filtered = menuItems.filter(p => 
+    p.nombre.toLowerCase().includes(query) || 
+    p.cat.toLowerCase().includes(query)
+  );
+  renderMenuAdmin(filtered);
+}
+
+function abrirCrearPlato() {
+  const mTitle = document.getElementById('plato-modal-title');
+  const mId = document.getElementById('edit-plato-id');
+  const mEmoji = document.getElementById('plato-emoji');
+  const mNombre = document.getElementById('plato-nombre');
+  const mPrecio = document.getElementById('plato-precio');
+  const mCat = document.getElementById('plato-categoria');
+  const mActivo = document.getElementById('plato-activo');
+
+  if (mTitle) mTitle.textContent = 'Crear Plato';
+  if (mId) mId.value = '';
+  if (mEmoji) mEmoji.value = '🐟';
+  if (mNombre) mNombre.value = '';
+  if (mPrecio) mPrecio.value = '';
+  if (mCat && adminCategorias.length > 0) {
+    mCat.value = adminCategorias[0].id;
+  }
+  if (mActivo) mActivo.checked = true;
+  
+  const mOverlay = document.getElementById('form-modal-overlay');
+  if (mOverlay) mOverlay.classList.add('open');
+}
+
+function abrirEditarPlato(id, emoji, nombre, precio, categoria_id, activo) {
+  const mTitle = document.getElementById('plato-modal-title');
+  const mId = document.getElementById('edit-plato-id');
+  const mEmoji = document.getElementById('plato-emoji');
+  const mNombre = document.getElementById('plato-nombre');
+  const mPrecio = document.getElementById('plato-precio');
+  const mCat = document.getElementById('plato-categoria');
+  const mActivo = document.getElementById('plato-activo');
+
+  if (mTitle) mTitle.textContent = 'Editar Plato';
+  if (mId) mId.value = id;
+  if (mEmoji) mEmoji.value = emoji;
+  if (mNombre) mNombre.value = nombre;
+  if (mPrecio) mPrecio.value = precio;
+  if (mCat) mCat.value = categoria_id;
+  if (mActivo) mActivo.checked = activo;
+
+  const mOverlay = document.getElementById('form-modal-overlay');
+  if (mOverlay) mOverlay.classList.add('open');
+}
+
+function cerrarPlatoModal() {
+  const mOverlay = document.getElementById('form-modal-overlay');
+  if (mOverlay) mOverlay.classList.remove('open');
+}
+
+async function guardarPlato(e) {
+  e.preventDefault();
+  const id = document.getElementById('edit-plato-id').value;
+  const emoji = document.getElementById('plato-emoji').value;
+  const nombre = document.getElementById('plato-nombre').value;
+  const precio = parseInt(document.getElementById('plato-precio').value);
+  const categoria_id = parseInt(document.getElementById('plato-categoria').value);
+  const activo = document.getElementById('plato-activo') ? document.getElementById('plato-activo').checked : true;
+
+  const url = id ? `${API_URL}/api/menu/${id}` : `${API_URL}/api/menu`;
+  const method = id ? 'PUT' : 'POST';
+  const body = { emoji, nombre, precio, categoria_id, activo };
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      cerrarPlatoModal();
+      fetchMenuAdmin();
+    } else {
+      const errData = await res.json();
+      alert('Error: ' + (errData.error || 'No se pudo guardar el plato'));
+    }
+  } catch (err) { console.error('Error saving dish:', err); }
+}
+
+async function eliminarPlato(id) {
+  const p = menuItems.find(x => x.id === id);
+  const nombrePlato = p ? `${p.emoji} ${p.nombre}` : 'este plato';
+
+  showModal(
+    '🗑️ Desactivar Plato',
+    `¿Estás seguro de que deseas desactivar ${nombrePlato}? Ya no estará disponible para pedidos.`,
+    async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/menu/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          fetchMenuAdmin();
+        } else {
+          alert('Error al desactivar el plato');
+        }
+      } catch (err) { console.error('Error deleting dish:', err); }
+    },
+    'Desactivar'
+  );
+}
+
+async function reactivarPlato(id) {
+  const p = menuItems.find(x => x.id === id);
+  if (!p) return;
+
+  showModal(
+    '⚡ Activar Plato',
+    `¿Deseas volver a activar el plato ${p.emoji} ${p.nombre}?`,
+    async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/menu/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nombre: p.nombre,
+            precio: p.precio,
+            categoria_id: p.categoria_id,
+            emoji: p.emoji,
+            activo: true
+          })
+        });
+        if (res.ok) {
+          fetchMenuAdmin();
+        } else {
+          alert('Error al activar el plato');
+        }
+      } catch (err) { console.error('Error activating dish:', err); }
+    },
+    'Activar'
+  );
 }
 
 // ============ INIT ============

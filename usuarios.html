@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usuarios | Sabores del Río</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <span class="logo-wave">🌊</span>
+    Sabores <em>del Río</em>
+  </div>
+  <div class="topbar-right">
+    <span id="user-info" style="font-size: 13px; color: var(--muted); margin-right: 15px; font-weight: 500;"></span>
+    <span class="clock" id="clock">--:--</span>
+    <span class="badge" id="notif-badge">0 pendientes</span>
+    <button class="btn btn-secondary" onclick="logout()" style="width: auto; padding: 5px 12px; margin-left: 15px; font-size: 12px; border-color: transparent;">Salir</button>
+  </div>
+</div>
+
+<div class="reportes-layout">
+  <div class="reportes-header">
+    <div>
+      <div class="rep-title">Personal / Usuarios</div>
+      <div style="color:var(--muted);font-size:12px;margin-top:3px;">Gestión de accesos y roles del sistema</div>
+    </div>
+    <div>
+      <button class="btn btn-primary" style="width:auto;padding:9px 18px;margin-top:0;" onclick="abrirCrearUsuario()">+ Nuevo Usuario</button>
+    </div>
+  </div>
+
+  <div style="margin-bottom: 16px; max-width: 320px;">
+    <input class="search-input" type="text" placeholder="🔍 Buscar usuario por nombre o rol..." id="user-search-input" oninput="filterUsuarios()">
+  </div>
+
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Usuario (Username)</th>
+          <th>Rol</th>
+          <th>Página de Inicio</th>
+          <th style="text-align: right;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tabla-usuarios-body">
+        <!-- Usuarios listados dinámicamente -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal de Formulario -->
+<div class="modal-overlay" id="form-modal-overlay">
+  <div class="modal" style="max-width: 450px;">
+    <div class="modal-title" id="usuario-modal-title">Crear Usuario</div>
+    <div class="modal-sub" id="usuario-modal-sub">Completa los datos del usuario</div>
+    
+    <form id="usuario-form" onsubmit="guardarUsuario(event)">
+      <input type="hidden" id="edit-user-id">
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="user-nombre" style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Nombre Completo</label>
+        <input type="text" id="user-nombre" class="search-input" style="width: 100%; box-sizing: border-box;" required placeholder="Ej. Juan Pérez">
+      </div>
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="user-username" style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Nombre de Usuario</label>
+        <input type="text" id="user-username" class="search-input" style="width: 100%; box-sizing: border-box;" required placeholder="Ej. jperez">
+      </div>
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="user-password" style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Contraseña</label>
+        <input type="password" id="user-password" class="search-input" style="width: 100%; box-sizing: border-box;" required placeholder="••••••••">
+      </div>
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label for="user-rol" style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Rol</label>
+        <select id="user-rol" class="rep-select" style="width: 100%; box-sizing: border-box; height: 38px;" required>
+          <option value="mozo">Mozo de Salón</option>
+          <option value="cocina">Jefe de Cocina</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+      <div class="modal-actions" style="justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="cerrarUsuarioModal()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="usuario-submit-btn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal de Confirmación -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Confirmar</div>
+    <div class="modal-sub" id="modal-sub">¿Estás seguro?</div>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()" style="margin-top:0;">Cancelar</button>
+      <button class="btn btn-primary" id="modal-confirm-btn" style="margin-top:0;">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

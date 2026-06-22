@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
 CREATE TABLE IF NOT EXISTS pedido_items (
     id SERIAL PRIMARY KEY,
     pedido_id INTEGER REFERENCES pedidos(id) ON DELETE CASCADE,
-    menu_item_id INTEGER REFERENCES menu_items(id),
+    menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
     cantidad INTEGER NOT NULL,
     precio_unitario INTEGER NOT NULL
 );
