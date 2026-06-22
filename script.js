@@ -1,11 +1,52 @@
 // ============ VARIABLES DE ESTADO ============
-let mesas = JSON.parse(JSON.stringify(MESAS_INITIAL));
+let mesas = [];
+let menuItems = [];
+let categorias = ['Todas'];
 let mesaSeleccionada = null;
 let catActiva = 'Todas';
 let orden = [];
 let tickets = [];
-let ticketCounter = 100;
 let ordenesPagadas = [];
+
+const API_URL = ''; // Relativo al servidor
+const MESA_ICONS = ['⛵','🚣','🎣','🐚','🌊','⚓','🦈','🐋','🪝','🗺️'];
+
+// ============ API FETCH ============
+
+async function fetchMenu() {
+  try {
+    const res = await fetch(`${API_URL}/api/menu`);
+    menuItems = await res.json();
+    categorias = ['Todas', ...new Set(menuItems.map(i => i.cat))];
+    if (window.location.pathname.includes('pedidos.html')) {
+      renderCatPills();
+      renderMenuItems();
+    }
+  } catch (err) { console.error('Error fetching menu:', err); }
+}
+
+async function fetchMesas() {
+  try {
+    const res = await fetch(`${API_URL}/api/mesas`);
+    mesas = await res.json();
+    if (window.location.pathname.includes('pedidos.html')) renderMesas();
+  } catch (err) { console.error('Error fetching mesas:', err); }
+}
+
+async function fetchTickets() {
+  try {
+    const res = await fetch(`${API_URL}/api/tickets`);
+    const data = await res.json();
+    // Normalizar hora/fecha
+    tickets = data.map(t => ({
+      ...t,
+      hora: t.fecha ? new Date(t.fecha) : new Date()
+    }));
+    const page = window.location.pathname.split('/').pop() || 'index.html';
+    if (page === 'cocina.html') renderCocina();
+    updateNotifBadge();
+  } catch (err) { console.error('Error fetching tickets:', err); }
+}
 
 // ============ RELOJ ============
 function updateClock() {
@@ -17,24 +58,29 @@ function updateClock() {
 setInterval(updateClock, 1000);
 
 // ============ AUTH & RUTAS ============
-const USERS = {
-  'admin':   { pass: '123', rol: 'admin',   home: 'reportes.html', nombre: 'Administrador' },
-  'cocina':  { pass: '123', rol: 'cocina',  home: 'cocina.html',   nombre: 'Jefe de Cocina' },
-  'mozo':    { pass: '123', rol: 'mozo',    home: 'pedidos.html',  nombre: 'Mozo de Salón' }
-};
-
-function handleLogin(e) {
+async function handleLogin(e) {
   e.preventDefault();
   const u = document.getElementById('username').value;
   const p = document.getElementById('password').value;
   const err = document.getElementById('login-error');
 
-  if (USERS[u] && USERS[u].pass === p) {
-    localStorage.setItem('sabores_session', JSON.stringify({ user: u, ...USERS[u] }));
-    err.style.display = 'none';
-    window.location.href = USERS[u].home;
-  } else {
-    err.style.display = 'block';
+  try {
+    const res = await fetch(`${API_URL}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+      localStorage.setItem('sabores_session', JSON.stringify(data.user));
+      err.style.display = 'none';
+      window.location.href = data.user.home_page;
+    } else {
+      err.style.display = 'block';
+    }
+  } catch (err) {
+    console.error('Error logging in:', err);
   }
 }
 
@@ -48,40 +94,40 @@ function checkPageAuth() {
   const path = window.location.pathname;
   const page = path.split('/').pop() || 'index.html';
 
-  // Si no hay sesión y no estamos en login, ir a login
   if (!session && page !== 'index.html') {
     window.location.href = 'index.html';
     return;
   }
 
-  // Si hay sesión
   if (session) {
-    // Si está en login teniendo sesión, mandarlo a su home
     if (page === 'index.html') {
-      window.location.href = session.home;
+      window.location.href = session.home_page;
       return;
     }
-
-    // Protección de rutas por archivo físico
+    // Protección de rutas dinámica basada en el rol y la home_page asignada
     if (session.rol === 'mozo' && page !== 'pedidos.html') { window.location.href = 'pedidos.html'; return; }
     if (session.rol === 'cocina' && page !== 'cocina.html') { window.location.href = 'cocina.html'; return; }
     if (session.rol === 'admin' && page !== 'reportes.html') { window.location.href = 'reportes.html'; return; }
 
-    // Actualizar UI de sesión
     const userInfoEl = document.getElementById('user-info');
     if (userInfoEl) userInfoEl.textContent = `${session.nombre} (${session.rol})`;
   }
 }
 
-// Reemplazamos el router SPA por el validador de página
 function initPage() {
   checkPageAuth();
-  
   const path = window.location.pathname;
   const page = path.split('/').pop() || 'index.html';
 
-  if (page === 'pedidos.html') { renderMesas(); renderMenuItems(); renderCatPills(); }
-  if (page === 'cocina.html') renderCocina();
+  if (page === 'pedidos.html') {
+    fetchMenu();
+    fetchMesas();
+    fetchTickets();
+  }
+  if (page === 'cocina.html') {
+    fetchTickets();
+    setInterval(fetchTickets, 10000);
+  }
   if (page === 'reportes.html') renderReportes();
 }
 
@@ -106,8 +152,10 @@ function renderMesas() {
 
 function selectMesa(num) {
   mesaSeleccionada = num;
-  document.getElementById('mesa-selected-label').textContent = 'Mesa ' + num;
-  document.getElementById('orden-mesa-label').textContent = 'Mesa ' + num;
+  const label1 = document.getElementById('mesa-selected-label');
+  const label2 = document.getElementById('orden-mesa-label');
+  if (label1) label1.textContent = 'Mesa ' + num;
+  if (label2) label2.textContent = 'Mesa ' + num;
   renderMesas();
 }
 
@@ -116,7 +164,7 @@ function renderCatPills() {
   const c = document.getElementById('cat-pills');
   if (!c) return;
   c.innerHTML = '';
-  CATEGORIAS.forEach(cat => {
+  categorias.forEach(cat => {
     const pill = document.createElement('button');
     pill.className = `cat-pill ${catActiva === cat ? 'active' : ''}`;
     pill.textContent = cat;
@@ -133,7 +181,7 @@ function renderMenuItems() {
   const grid = document.getElementById('menu-items-grid');
   if (!grid) return;
   grid.innerHTML = '';
-  const filtered = MENU.filter(i => {
+  const filtered = menuItems.filter(i => {
     const catOk = catActiva === 'Todas' || i.cat === catActiva;
     const qOk = !q || i.nombre.toLowerCase().includes(q);
     return catOk && qOk;
@@ -202,9 +250,12 @@ function changeQty(idx, delta) {
 
 function updateTotals(sub) {
   const iva = Math.round(sub * 0.10);
-  document.getElementById('subtotal').textContent = 'Gs. ' + sub.toLocaleString('es-PY');
-  document.getElementById('iva').textContent = 'Gs. ' + iva.toLocaleString('es-PY');
-  document.getElementById('total').textContent = 'Gs. ' + (sub + iva).toLocaleString('es-PY');
+  const subEl = document.getElementById('subtotal');
+  const ivaEl = document.getElementById('iva');
+  const totEl = document.getElementById('total');
+  if (subEl) subEl.textContent = 'Gs. ' + sub.toLocaleString('es-PY');
+  if (ivaEl) ivaEl.textContent = 'Gs. ' + iva.toLocaleString('es-PY');
+  if (totEl) totEl.textContent = 'Gs. ' + (sub + iva).toLocaleString('es-PY');
 }
 
 function clearOrden() {
@@ -212,38 +263,54 @@ function clearOrden() {
   const notasInput = document.getElementById('notas-orden');
   if (notasInput) notasInput.value = '';
   renderOrden();
-  document.getElementById('orden-mesa-label').textContent = 'sin mesa';
+  const label = document.getElementById('orden-mesa-label');
+  if (label) label.textContent = 'sin mesa';
 }
 
-function enviarCocina() {
+async function enviarCocina() {
   if (!orden.length) { showModal('⚠️ Orden vacía', 'Agregá al menos un plato.', null, null, true); return; }
   if (!mesaSeleccionada) { showModal('⚠️ Sin mesa', 'Seleccioná una mesa primero.', null, null, true); return; }
   const notasInput = document.getElementById('notas-orden');
   const notas = notasInput ? notasInput.value : '';
-  const ticket = { id: ++ticketCounter, mesa: mesaSeleccionada, items: JSON.parse(JSON.stringify(orden)), notas, estado: 'pendiente', hora: new Date() };
-  tickets.push(ticket);
-  const m = mesas.find(x => x.num === mesaSeleccionada);
-  if (m) { m.estado = 'ocupada'; m.personas = Math.floor(Math.random() * 5) + 1; }
-  updateNotifBadge();
-  clearOrden();
-  mesaSeleccionada = null;
-  document.getElementById('mesa-selected-label').textContent = 'Sin selección';
-  renderMesas();
-  showModal('✅ Enviado', `Ticket #${ticket.id} enviado a cocina — Mesa ${ticket.mesa}.`, null, null, true);
+  
+  try {
+    const res = await fetch(`${API_URL}/api/tickets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mesa: mesaSeleccionada, items: orden, notas })
+    });
+    if (res.ok) {
+      showModal('✅ Enviado', `Pedido enviado a cocina para Mesa ${mesaSeleccionada}.`, null, null, true);
+      clearOrden();
+      mesaSeleccionada = null;
+      const label = document.getElementById('mesa-selected-label');
+      if (label) label.textContent = 'Sin selección';
+      fetchMesas();
+      fetchTickets();
+    }
+  } catch (err) { console.error('Error sending to kitchen:', err); }
 }
 
-function cobrarOrden() {
-  if (!orden.length) { showModal('⚠️ Orden vacía', 'No hay nada que cobrar.', null, null, true); return; }
-  const sub = orden.reduce((a, i) => a + i.precio * i.qty, 0);
-  const total = sub + Math.round(sub * 0.10);
-  showModal('💳 Cobrar Orden', `Mesa ${mesaSeleccionada || '—'} — Total: Gs. ${total.toLocaleString('es-PY')}`, () => {
-    ordenesPagadas.push({ items: JSON.parse(JSON.stringify(orden)), total, fecha: new Date(), mesa: mesaSeleccionada });
-    const m = mesas.find(x => x.num === mesaSeleccionada);
-    if (m) { m.estado = 'libre'; m.personas = 0; }
-    clearOrden();
-    mesaSeleccionada = null;
-    document.getElementById('mesa-selected-label').textContent = 'Sin selección';
-    renderMesas();
+async function cobrarOrden() {
+  if (!mesaSeleccionada) { showModal('⚠️ Sin mesa', 'Seleccioná una mesa para cobrar.', null, null, true); return; }
+  const m = mesas.find(x => x.num === mesaSeleccionada);
+  if (!m || m.estado === 'libre') { showModal('⚠️ Mesa libre', 'Esta mesa no tiene consumos pendientes.', null, null, true); return; }
+
+  showModal('💳 Cobrar Mesa', `¿Confirmar el cobro y liberación de la Mesa ${mesaSeleccionada}?`, async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/cobrar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mesa: mesaSeleccionada })
+      });
+      if (res.ok) {
+        mesaSeleccionada = null;
+        const label = document.getElementById('mesa-selected-label');
+        if (label) label.textContent = 'Sin selección';
+        fetchMesas();
+        fetchTickets();
+      }
+    } catch (err) { console.error('Error charging:', err); }
   }, 'Confirmar cobro');
 }
 
@@ -258,9 +325,15 @@ function renderCocina() {
   const pend = tickets.filter(t => t.estado === 'pendiente');
   const proc = tickets.filter(t => t.estado === 'proceso');
   const list = tickets.filter(t => t.estado === 'listo');
-  document.getElementById('stat-pendiente').textContent = pend.length + ' Pendientes';
-  document.getElementById('stat-proceso').textContent = proc.length + ' En proceso';
-  document.getElementById('stat-listo').textContent = list.length + ' Listos';
+  
+  const sPend = document.getElementById('stat-pendiente');
+  const sProc = document.getElementById('stat-proceso');
+  const sList = document.getElementById('stat-listo');
+  
+  if (sPend) sPend.textContent = pend.length + ' Pendientes';
+  if (sProc) sProc.textContent = proc.length + ' En proceso';
+  if (sList) sList.textContent = list.length + ' Listos';
+  
   renderTickets('col-pendiente-items', pend, 'pendiente');
   renderTickets('col-proceso-items', proc, 'proceso');
   renderTickets('col-listo-items', list, 'listo');
@@ -300,74 +373,91 @@ function renderTickets(containerId, ticketList, estado) {
   });
 }
 
-function cambiarEstado(id, nuevoEstado) {
-  const t = tickets.find(x => x.id === id);
-  if (!t) return;
-  if (nuevoEstado === 'entregado') tickets = tickets.filter(x => x.id !== id);
-  else t.estado = nuevoEstado;
-  renderCocina();
+async function cambiarEstado(id, nuevoEstado) {
+  try {
+    const res = await fetch(`${API_URL}/api/tickets/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado: nuevoEstado })
+    });
+    if (res.ok) fetchTickets();
+  } catch (err) { console.error('Error changing state:', err); }
 }
 
 // ============ REPORTES ============
-function renderReportes() {
+let reportData = null;
+
+async function renderReportes() {
   const periodoSelect = document.getElementById('rep-periodo');
   const periodo = periodoSelect ? periodoSelect.value : 'hoy';
-  const d = ventasDemo[periodo];
+  
+  try {
+    const res = await fetch(`${API_URL}/api/reportes?periodo=${periodo}`);
+    reportData = await res.json();
+    const { kpis, ventasHora, ventasCat, topProductos } = reportData;
 
-  const kpis = [
-    { label:'Ventas Totales', val:'Gs. ' + (d.total/1000000).toFixed(1) + 'M', delta:'+14%', dir:'up', cls:'k1' },
-    { label:'Pedidos', val:d.pedidos, delta:'+9%', dir:'up', cls:'k2' },
-    { label:'Ticket Promedio', val:'Gs. ' + Math.round(d.ticket/1000) + 'K', delta:'+5%', dir:'up', cls:'k3' },
-    { label:'Mesas Atendidas', val:d.mesa_avg, delta:'-1%', dir:'down', cls:'k4' },
-  ];
+    const kpiItems = [
+      { label:'Ventas Totales', val:'Gs. ' + Math.round(kpis.total_ventas).toLocaleString('es-PY'), cls:'k1' },
+      { label:'Pedidos', val:kpis.total_pedidos, cls:'k2' },
+      { label:'Ticket Promedio', val:'Gs. ' + Math.round(kpis.ticket_promedio).toLocaleString('es-PY'), cls:'k3' },
+      { label:'Mesas Atendidas', val:kpis.total_pedidos > 0 ? (kpis.total_pedidos / 1.5).toFixed(0) : 0, cls:'k4' },
+    ];
 
-  const kpiGrid = document.getElementById('kpi-grid');
-  if (kpiGrid) {
-    kpiGrid.innerHTML = kpis.map(k => `
-      <div class="kpi-card ${k.cls}">
-        <div class="kpi-label">${k.label}</div>
-        <div class="kpi-value">${k.val}</div>
-        <div class="kpi-delta ${k.dir}">${k.dir === 'up' ? '↑' : '↓'} ${k.delta} vs período anterior</div>
-      </div>
-    `).join('');
-  }
+    const kpiGrid = document.getElementById('kpi-grid');
+    if (kpiGrid) {
+      kpiGrid.innerHTML = kpiItems.map(k => `
+        <div class="kpi-card ${k.cls}">
+          <div class="kpi-label">${k.label}</div>
+          <div class="kpi-value">${k.val}</div>
+        </div>
+      `).join('');
+    }
 
-  renderBarChart(d.horas);
-  renderDonut(d.cats);
-  renderTablaProductos();
+    renderBarChart(ventasHora);
+    renderDonut(ventasCat);
+    renderTablaProductos(topProductos);
+  } catch (err) { console.error('Error rendering reports:', err); }
 }
 
-function renderBarChart(horas) {
-  const labels = ['8h','9h','10h','11h','12h','13h','14h','15h','16h','17h','18h','19h','20h'];
-  const max = Math.max(...horas);
+function renderBarChart(ventasHora) {
   const c = document.getElementById('chart-ventas-hora');
   if (!c) return;
   c.innerHTML = '';
-  horas.forEach((val, i) => {
-    const pct = (val / max) * 100;
+  
+  const horasFull = Array.from({ length: 24 }, (_, i) => ({ hora: i, pedidos: 0 }));
+  ventasHora.forEach(vh => { horasFull[parseInt(vh.hora)].pedidos = parseInt(vh.pedidos); });
+  
+  const relevantHours = horasFull.slice(8, 23); // De 8h a 22h
+  const max = Math.max(...relevantHours.map(h => h.pedidos)) || 1;
+
+  relevantHours.forEach(h => {
+    const pct = (h.pedidos / max) * 100;
     const el = document.createElement('div');
     el.className = 'bar-group';
     el.innerHTML = `
       <div class="bar" style="height:${pct}%;background:linear-gradient(to top, var(--accent), rgba(56,201,192,0.3));">
-        <span class="bar-val">${val}k</span>
+        <span class="bar-val">${h.pedidos}</span>
       </div>
-      <div class="bar-label">${labels[i]}</div>
+      <div class="bar-label">${h.hora}h</div>
     `;
     c.appendChild(el);
   });
 }
 
-function renderDonut(cats) {
+function renderDonut(ventasCat) {
   const colors = ['#38c9c0','#2ec47a','#d4a840','#e05c2a','#7b8fd4'];
+  const total = ventasCat.reduce((a, c) => a + parseInt(c.count), 0) || 1;
   let offset = 25;
-  const segments = cats.map((cat, i) => {
-    const pct = typeof cat.p === 'function' ? cat.p() : cat.p;
+  
+  const segments = ventasCat.map((cat, i) => {
+    const pct = (parseInt(cat.count) / total) * 100;
     const dash = (pct / 100) * 283;
     const gap = 283 - dash;
-    const seg = `<circle r="45" cx="60" cy="60" fill="none" stroke="${colors[i]}" stroke-width="18" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset * 2.83 + 283 * 0.25}" style="transition:all 0.5s;" />`;
+    const seg = `<circle r="45" cx="60" cy="60" fill="none" stroke="${colors[i % colors.length]}" stroke-width="18" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset * 2.83 + 283 * 0.25}" style="transition:all 0.5s;" />`;
     offset += pct;
-    return { seg, color: colors[i], name: cat.n, pct };
+    return { seg, color: colors[i % colors.length], name: cat.n, pct: pct.toFixed(1) };
   });
+
   const chartCats = document.getElementById('chart-categorias');
   if (chartCats) {
     chartCats.innerHTML = `
@@ -388,17 +478,10 @@ function renderDonut(cats) {
   }
 }
 
-function renderTablaProductos() {
-  const productos = [
-    { nombre:'Dorado al Limón',           cat:'Pescados de Río', emoji:'🍊', vendidos:52, ingresos:4680000 },
-    { nombre:'Cazuela de Mariscos',        cat:'Mariscos',        emoji:'🍲', vendidos:44, ingresos:4312000 },
-    { nombre:'Surubí a la Plancha',        cat:'Pescados de Río', emoji:'🐠', vendidos:40, ingresos:3120000 },
-    { nombre:'Pulpo a la Gallega',         cat:'Mariscos',        emoji:'🐙', vendidos:35, ingresos:3325000 },
-    { nombre:'Risotto de Camarones',       cat:'Arroces & Pastas',emoji:'🍚', vendidos:30, ingresos:1950000 },
-    { nombre:'Camarones al Pil Pil',       cat:'Mariscos',        emoji:'🦐', vendidos:28, ingresos:2296000 },
-  ];
-  const maxVend = Math.max(...productos.map(p => p.vendidos));
-  const totalIng = productos.reduce((a, p) => a + p.ingresos, 0);
+function renderTablaProductos(productos) {
+  if (!productos) return;
+  const totalIng = productos.reduce((a, p) => a + parseInt(p.ingresos), 0) || 1;
+  const maxVend = Math.max(...productos.map(p => parseInt(p.vendidos))) || 1;
   const rankClasses = ['gold','silver','bronze','','',''];
   const tbody = document.getElementById('tabla-productos-body');
   if (tbody) {
@@ -408,13 +491,13 @@ function renderTablaProductos() {
         <td>${p.emoji} ${p.nombre}</td>
         <td><span style="background:rgba(56,201,192,0.08);color:var(--accent);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">${p.cat}</span></td>
         <td>${p.vendidos}</td>
-        <td>Gs. ${p.ingresos.toLocaleString('es-PY')}</td>
+        <td>Gs. ${parseInt(p.ingresos).toLocaleString('es-PY')}</td>
         <td style="min-width:130px;">
           <div style="display:flex;align-items:center;gap:8px;">
             <div class="progress-bar-wrap" style="flex:1;">
-              <div class="progress-bar-fill" style="width:${(p.vendidos/maxVend*100).toFixed(0)}%"></div>
+              <div class="progress-bar-fill" style="width:${(parseInt(p.vendidos)/maxVend*100).toFixed(0)}%"></div>
             </div>
-            <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${(p.ingresos/totalIng*100).toFixed(1)}%</span>
+            <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${(parseInt(p.ingresos)/totalIng*100).toFixed(1)}%</span>
           </div>
         </td>
       </tr>
@@ -426,23 +509,32 @@ function renderTablaProductos() {
 let modalCallback = null;
 
 function showModal(title, sub, onConfirm, confirmLabel, infoOnly) {
-  document.getElementById('modal-title').textContent = title;
-  document.getElementById('modal-sub').textContent = sub;
-  document.getElementById('modal-body').innerHTML = '';
-  const btn = document.getElementById('modal-confirm-btn');
-  if (infoOnly) {
-    btn.textContent = 'Entendido';
-    btn.onclick = closeModal;
-  } else {
-    btn.textContent = confirmLabel || 'Confirmar';
-    modalCallback = onConfirm;
-    btn.onclick = () => { if (modalCallback) modalCallback(); closeModal(); };
+  const mTitle = document.getElementById('modal-title');
+  const mSub = document.getElementById('modal-sub');
+  const mBody = document.getElementById('modal-body');
+  const mBtn = document.getElementById('modal-confirm-btn');
+  const mOverlay = document.getElementById('modal-overlay');
+
+  if (mTitle) mTitle.textContent = title;
+  if (mSub) mSub.textContent = sub;
+  if (mBody) mBody.innerHTML = '';
+  
+  if (mBtn) {
+    if (infoOnly) {
+      mBtn.textContent = 'Entendido';
+      mBtn.onclick = closeModal;
+    } else {
+      mBtn.textContent = confirmLabel || 'Confirmar';
+      modalCallback = onConfirm;
+      mBtn.onclick = () => { if (modalCallback) modalCallback(); closeModal(); };
+    }
   }
-  document.getElementById('modal-overlay').classList.add('open');
+  if (mOverlay) mOverlay.classList.add('open');
 }
 
 function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
+  const mOverlay = document.getElementById('modal-overlay');
+  if (mOverlay) mOverlay.classList.remove('open');
   modalCallback = null;
 }
 
@@ -455,14 +547,11 @@ if (modalOverlay) {
 
 // ============ EXPORT ============
 function exportarCSV() {
-  const rows = [['Producto','Categoría','Vendidos','Ingresos (Gs.)'],
-    ['Dorado al Limón','Pescados de Río',52,4680000],
-    ['Cazuela de Mariscos','Mariscos',44,4312000],
-    ['Surubí a la Plancha','Pescados de Río',40,3120000],
-    ['Pulpo a la Gallega','Mariscos',35,3325000],
-    ['Risotto de Camarones','Arroces & Pastas',30,1950000],
-    ['Camarones al Pil Pil','Mariscos',28,2296000],
-  ];
+  if (!reportData || !reportData.topProductos) return;
+  const rows = [['Producto','Categoría','Vendidos','Ingresos (Gs.)']];
+  reportData.topProductos.forEach(p => {
+    rows.push([p.nombre, p.cat, p.vendidos, p.ingresos]);
+  });
   const csv = rows.map(r => r.join(',')).join('\n');
   const blob = new Blob([csv], {type:'text/csv'});
   const url = URL.createObjectURL(blob);
@@ -474,14 +563,5 @@ function exportarCSV() {
 // ============ INIT ============
 document.addEventListener('DOMContentLoaded', () => {
   updateClock();
-
-  tickets = [
-    { id:101, mesa:2, items:[{id:5,nombre:'Surubí a la Plancha',emoji:'🐠',precio:78000,qty:2},{id:21,nombre:'Vino Blanco Copa',emoji:'🥂',precio:32000,qty:2}], notas:'Sin picante', estado:'pendiente', hora:new Date(Date.now()-7*60000) },
-    { id:102, mesa:4, items:[{id:12,nombre:'Cazuela de Mariscos',emoji:'🍲',precio:98000,qty:1},{id:1,nombre:'Ceviche de Surubí',emoji:'🍋',precio:52000,qty:2}], notas:'Alergia al gluten', estado:'proceso', hora:new Date(Date.now()-14*60000) },
-    { id:103, mesa:6, items:[{id:7,nombre:'Dorado al Limón',emoji:'🍊',precio:90000,qty:1},{id:11,nombre:'Pulpo a la Gallega',emoji:'🐙',precio:95000,qty:1}], notas:'', estado:'listo', hora:new Date(Date.now()-21*60000) },
-  ];
-  updateNotifBadge();
-
-  // Iniciar validación de página
   initPage();
 });

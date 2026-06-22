@@ -2,12 +2,19 @@
   "name": "restosaboresdelrio",
   "version": "1.0.0",
   "description": "Sistema de gestión para Sabores del Río",
-  "main": "index.html",
+  "main": "server.js",
   "scripts": {
-    "start": "browser-sync start --server --files \"*.html, *.css, *.js\"",
-    "dev": "browser-sync start --server --files \"*.html, *.css, *.js\""
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
   },
   "devDependencies": {
-    "browser-sync": "^3.0.3"
+    "browser-sync": "^3.0.3",
+    "nodemon": "^3.1.0"
   }
 }
