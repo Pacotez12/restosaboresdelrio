@@ -83,6 +83,41 @@ body.login-mode .topbar {
   font-weight: 600;
 }
 
+/* ========= ADMIN NAV ========= */
+.admin-nav {
+  display: flex;
+  gap: 16px;
+  margin-left: 40px;
+  margin-right: auto;
+}
+
+.admin-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+}
+
+.admin-nav a:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(56, 201, 192, 0.15);
+}
+
+.admin-nav a.active {
+  color: var(--bg);
+  background: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(56, 201, 192, 0.3);
+}
+
 /* ========= LOGIN SCREEN ========= */
 #view-login {
   background: var(--bg);
@@ -831,3 +866,110 @@ tr:hover td { background: rgba(56,201,192,0.03); }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ========= HISTORIAL DE PEDIDOS EN EL PANEL DE ORDEN ========= */
+.historial-seccion {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 15px;
+  margin-bottom: 15px;
+}
+
+.seccion-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent);
+  margin-bottom: 12px;
+  opacity: 0.85;
+}
+
+.historial-ticket-card {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  transition: border-color 0.2s ease;
+}
+
+.historial-ticket-card:hover {
+  border-color: rgba(56, 201, 192, 0.15);
+}
+
+.historial-ticket-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  border-bottom: 1px dashed rgba(20, 51, 71, 0.4);
+  padding-bottom: 6px;
+}
+
+.ticket-id {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  opacity: 0.9;
+}
+
+.ticket-estado-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+}
+
+.badge-pendiente {
+  background: rgba(212, 168, 64, 0.12);
+  color: var(--gold);
+  border: 1px solid rgba(212, 168, 64, 0.2);
+}
+
+.badge-proceso {
+  background: rgba(224, 92, 42, 0.12);
+  color: var(--accent2);
+  border: 1px solid rgba(224, 92, 42, 0.2);
+}
+
+.badge-listo {
+  background: rgba(56, 201, 192, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(56, 201, 192, 0.25);
+}
+
+.badge-entregado {
+  background: rgba(46, 196, 122, 0.12);
+  color: var(--success);
+  border: 1px solid rgba(46, 196, 122, 0.2);
+}
+
+.historial-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 5px;
+  opacity: 0.85;
+}
+
+.historial-qty {
+  color: var(--accent);
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.historial-notas {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 6px;
+  font-style: italic;
+  background: rgba(255, 255, 255, 0.01);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.nuevos-seccion {
+  margin-top: 15px;
+}

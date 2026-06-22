@@ -44,6 +44,7 @@ async function fetchTickets() {
     }));
     const page = window.location.pathname.split('/').pop() || 'index.html';
     if (page === 'cocina.html') renderCocina();
+    if (page === 'pedidos.html') renderOrden();
     updateNotifBadge();
   } catch (err) { console.error('Error fetching tickets:', err); }
 }
@@ -107,10 +108,51 @@ function checkPageAuth() {
     // Protección de rutas dinámica basada en el rol y la home_page asignada
     if (session.rol === 'mozo' && page !== 'pedidos.html') { window.location.href = 'pedidos.html'; return; }
     if (session.rol === 'cocina' && page !== 'cocina.html') { window.location.href = 'cocina.html'; return; }
-    if (session.rol === 'admin' && page !== 'reportes.html') { window.location.href = 'reportes.html'; return; }
+    // El rol admin ahora puede acceder a todas las páginas
 
     const userInfoEl = document.getElementById('user-info');
     if (userInfoEl) userInfoEl.textContent = `${session.nombre} (${session.rol})`;
+
+    if (session.rol === 'admin') {
+      renderAdminNav(page);
+    }
+  }
+}
+
+function renderAdminNav(currentPage) {
+  const topbar = document.querySelector('.topbar');
+  if (!topbar) return;
+
+  // Evitar duplicar el menú de navegación
+  if (document.getElementById('admin-nav')) return;
+
+  const nav = document.createElement('div');
+  nav.id = 'admin-nav';
+  nav.className = 'admin-nav';
+
+  const pages = [
+    { name: '📋 Pedidos', url: 'pedidos.html' },
+    { name: '🍳 Cocina', url: 'cocina.html' },
+    { name: '📊 Reportes', url: 'reportes.html' }
+  ];
+
+  pages.forEach(p => {
+    const link = document.createElement('a');
+    link.href = p.url;
+    link.textContent = p.name;
+    
+    if (currentPage === p.url) {
+      link.classList.add('active');
+    }
+
+    nav.appendChild(link);
+  });
+
+  const logo = topbar.querySelector('.logo');
+  if (logo) {
+    logo.after(nav);
+  } else {
+    topbar.insertBefore(nav, topbar.firstChild);
   }
 }
 
@@ -123,6 +165,10 @@ function initPage() {
     fetchMenu();
     fetchMesas();
     fetchTickets();
+    setInterval(() => {
+      fetchMesas();
+      fetchTickets();
+    }, 10000);
   }
   if (page === 'cocina.html') {
     fetchTickets();
@@ -152,11 +198,15 @@ function renderMesas() {
 
 function selectMesa(num) {
   mesaSeleccionada = num;
+  orden = []; // Reiniciar la selección de platos al cambiar de mesa
+  const notasInput = document.getElementById('notas-orden');
+  if (notasInput) notasInput.value = '';
   const label1 = document.getElementById('mesa-selected-label');
   const label2 = document.getElementById('orden-mesa-label');
   if (label1) label1.textContent = 'Mesa ' + num;
   if (label2) label2.textContent = 'Mesa ' + num;
   renderMesas();
+  renderOrden();
 }
 
 // ============ MENU ============
@@ -215,31 +265,107 @@ function agregarItem(item) {
 function renderOrden() {
   const container = document.getElementById('orden-items');
   if (!container) return;
-  if (!orden.length) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🦐</div><div class="empty-state-text">Agregá platos del menú</div></div>`;
-    updateTotals(0); return;
-  }
-  container.innerHTML = '';
-  let sub = 0;
-  orden.forEach((item, idx) => {
-    sub += item.precio * item.qty;
-    const el = document.createElement('div');
-    el.className = 'orden-item';
-    el.innerHTML = `
-      <span style="font-size:22px;">${item.emoji}</span>
-      <div class="orden-item-info">
-        <div class="orden-item-name">${item.nombre}</div>
-        <div class="orden-item-price">Gs. ${(item.precio * item.qty).toLocaleString('es-PY')}</div>
-      </div>
-      <div class="qty-control">
-        <button class="qty-btn" onclick="changeQty(${idx}, -1)">−</button>
-        <span class="qty-num">${item.qty}</span>
-        <button class="qty-btn" onclick="changeQty(${idx}, 1)">+</button>
+
+  // Si no hay mesa seleccionada, mostrar mensaje inicial
+  if (!mesaSeleccionada) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🦐</div>
+        <div class="empty-state-text">Seleccioná una mesa<br>y elegí del menú</div>
       </div>
     `;
-    container.appendChild(el);
-  });
-  updateTotals(sub);
+    updateTotals(0);
+    return;
+  }
+
+  // Buscar todos los pedidos no cobrados para esta mesa
+  const historialTickets = tickets.filter(t => t.mesa === mesaSeleccionada && t.estado !== 'cobrado');
+  
+  if (historialTickets.length === 0 && orden.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🍽️</div>
+        <div class="empty-state-text">Mesa vacía<br>Agregá platos del menú</div>
+      </div>
+    `;
+    updateTotals(0);
+    return;
+  }
+
+  container.innerHTML = '';
+  let subtotalAcumulado = 0;
+
+  // 1. Renderizar Historial de Consumo si existe
+  if (historialTickets.length > 0) {
+    const histSec = document.createElement('div');
+    histSec.className = 'historial-seccion';
+    histSec.innerHTML = `<div class="seccion-title">📜 Consumos Enviados</div>`;
+
+    historialTickets.forEach(t => {
+      let estadoTexto = '';
+      let badgeClass = '';
+      if (t.estado === 'pendiente') { estadoTexto = 'En cocina'; badgeClass = 'badge-pendiente'; }
+      else if (t.estado === 'proceso') { estadoTexto = 'Cocinando'; badgeClass = 'badge-proceso'; }
+      else if (t.estado === 'listo') { estadoTexto = 'Listo'; badgeClass = 'badge-listo'; }
+      else if (t.estado === 'entregado') { estadoTexto = 'Servido'; badgeClass = 'badge-entregado'; }
+
+      const card = document.createElement('div');
+      card.className = 'historial-ticket-card';
+      
+      let itemsHtml = '';
+      t.items.forEach(item => {
+        subtotalAcumulado += item.precio * item.qty;
+        itemsHtml += `
+          <div class="historial-item">
+            <span>${item.emoji} ${item.nombre} <span class="historial-qty">x${item.qty}</span></span>
+            <span>Gs. ${(item.precio * item.qty).toLocaleString('es-PY')}</span>
+          </div>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="historial-ticket-header">
+          <span class="ticket-id">Pedido #${t.id}</span>
+          <span class="ticket-estado-badge ${badgeClass}">${estadoTexto}</span>
+        </div>
+        <div class="historial-ticket-items">
+          ${itemsHtml}
+        </div>
+        ${t.notas ? `<div class="historial-notas">📝 ${t.notas}</div>` : ''}
+      `;
+      histSec.appendChild(card);
+    });
+    container.appendChild(histSec);
+  }
+
+  // 2. Renderizar platos nuevos agregados
+  if (orden.length > 0) {
+    const nuevosSec = document.createElement('div');
+    nuevosSec.className = 'nuevos-seccion';
+    nuevosSec.innerHTML = `<div class="seccion-title">✨ Nuevos platos a enviar</div>`;
+
+    orden.forEach((item, idx) => {
+      subtotalAcumulado += item.precio * item.qty;
+      const el = document.createElement('div');
+      el.className = 'orden-item';
+      el.innerHTML = `
+        <span style="font-size:22px;">${item.emoji}</span>
+        <div class="orden-item-info">
+          <div class="orden-item-name">${item.nombre}</div>
+          <div class="orden-item-price">Gs. ${(item.precio * item.qty).toLocaleString('es-PY')}</div>
+        </div>
+        <div class="qty-control">
+          <button class="qty-btn" onclick="changeQty(${idx}, -1)">−</button>
+          <span class="qty-num">${item.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${idx}, 1)">+</button>
+        </div>
+      `;
+      nuevosSec.appendChild(el);
+    });
+    container.appendChild(nuevosSec);
+  }
+
+  updateTotals(subtotalAcumulado);
 }
 
 function changeQty(idx, delta) {

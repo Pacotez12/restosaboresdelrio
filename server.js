@@ -68,7 +68,7 @@ app.get('/api/mesas', async (req, res) => {
 // Obtener Tickets (Pedidos)
 app.get('/api/tickets', async (req, res) => {
   try {
-    const pedidos = await pool.query('SELECT * FROM pedidos WHERE estado != \'entregado\' ORDER BY fecha');
+    const pedidos = await pool.query('SELECT * FROM pedidos WHERE estado != \'cobrado\' ORDER BY fecha');
     const items = await pool.query(`
       SELECT pi.*, m.nombre, m.emoji 
       FROM pedido_items pi 
@@ -148,7 +148,7 @@ app.post('/api/cobrar', async (req, res) => {
   const { mesa } = req.body;
   try {
     await pool.query('UPDATE mesas SET estado = \'libre\', personas = 0 WHERE num = $1', [mesa]);
-    await pool.query('UPDATE pedidos SET estado = \'entregado\' WHERE mesa_num = $1 AND estado = \'listo\'', [mesa]);
+    await pool.query('UPDATE pedidos SET estado = \'cobrado\' WHERE mesa_num = $1 AND estado != \'cobrado\'', [mesa]);
     res.json({ message: 'Mesa liberada' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -174,7 +174,7 @@ app.get('/api/reportes', async (req, res) => {
         FROM pedidos p
         JOIN pedido_items pi ON p.id = pi.pedido_id
         WHERE p.fecha >= NOW() - INTERVAL '${interval}'
-        AND p.estado = 'entregado'
+        AND p.estado = 'cobrado'
         GROUP BY p.id
       ) as subquery
     `);
@@ -184,7 +184,7 @@ app.get('/api/reportes', async (req, res) => {
       SELECT EXTRACT(HOUR FROM fecha) as hora, COUNT(*) as pedidos
       FROM pedidos
       WHERE fecha >= NOW() - INTERVAL '${interval}'
-      AND estado = 'entregado'
+      AND estado = 'cobrado'
       GROUP BY hora
       ORDER BY hora
     `);
@@ -197,7 +197,7 @@ app.get('/api/reportes', async (req, res) => {
       JOIN categorias c ON m.categoria_id = c.id
       JOIN pedidos p ON pi.pedido_id = p.id
       WHERE p.fecha >= NOW() - INTERVAL '${interval}'
-      AND p.estado = 'entregado'
+      AND p.estado = 'cobrado'
       GROUP BY c.nombre
     `);
 
@@ -209,7 +209,7 @@ app.get('/api/reportes', async (req, res) => {
       JOIN categorias c ON m.categoria_id = c.id
       JOIN pedidos p ON pi.pedido_id = p.id
       WHERE p.fecha >= NOW() - INTERVAL '${interval}'
-      AND p.estado = 'entregado'
+      AND p.estado = 'cobrado'
       GROUP BY m.nombre, c.nombre, m.emoji
       ORDER BY vendidos DESC
       LIMIT 10

@@ -71,6 +71,18 @@ INSERT INTO menu_items (nombre, precio, categoria_id, emoji) VALUES
 ('Agua de Coco Natural', 16000, (SELECT id FROM categorias WHERE nombre='Bebidas'), '🥤')
 ON CONFLICT DO NOTHING;
 
+-- Datos iniciales (Mesas)
+INSERT INTO mesas (num, estado, personas) VALUES
+(1, 'libre', 0),
+(2, 'libre', 0),
+(3, 'libre', 0),
+(4, 'libre', 0),
+(5, 'libre', 0),
+(6, 'libre', 0),
+(7, 'libre', 0),
+(8, 'libre', 0)
+ON CONFLICT (num) DO NOTHING;
+
 -- Usuarios y Roles
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
